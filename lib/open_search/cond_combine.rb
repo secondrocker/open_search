@@ -16,9 +16,9 @@ module OpenSearch
       raise 'without not support range,use with' if value.is_a?(Hash) || value.is_a?(Range)
 
       conds << if value.is_a?(Array)
-                 QueryCond::In.new(field, value, relation_and: true)
+                 QueryCond::In.new(field, value, relation_and: false)
                else
-                 QueryCond::Equal.new(field, value, relation_and: true)
+                 QueryCond::Equal.new(field, value, relation_and: false)
                end
     end
 
@@ -36,6 +36,14 @@ module OpenSearch
       current_scope = ::OpenSearch::QueryScope::OrScope.new
       current_scope.instance_exec(&block)
       scopes << current_scope
+    end
+
+    def order_by(field,sorting='asc')
+      orders << Sort::OrderBy.new(field,sorting)
+    end
+
+    def order_by_function(*params)
+      orders << Sort::OrderByFunction.new(params)
     end
   end
 end

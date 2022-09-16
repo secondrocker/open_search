@@ -12,10 +12,12 @@ module OpenSearch
 
     class Equal < Base
       def to_query
+        
+        format_value = value.is_a?(String) ?  %Q{"#{value}"} : value
         if relation_and
-          "#{field}: '#{value}'"
+          "#{field}= #{format_value}"
         else
-          "NOT #{field}: '#{value}'"
+          "#{field}!= #{format_value}"
         end
       end
     end
