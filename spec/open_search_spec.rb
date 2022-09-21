@@ -7,7 +7,18 @@ RSpec.describe OpenSearch do
     it 'with conds' do
       f.with(:a, 1)
       f.with(:b, 2)
-      expect(f.to_query).to eq("(a: '1' AND b: '2')")
+      expect(f.to_query).to include('(a= 1 AND b= 2)')
+    end
+  end
+
+  context 'or scope' do
+    let(:f) { OpenSearch::QueryScope::AndScope.new }
+    it 'with conds' do
+      f.any_of do |ff|
+        ff.with(:a, 1)
+        ff.with(:b, 2)
+      end
+      expect(f.to_query).to include('(a= 1 OR b= 2)')
     end
   end
 end

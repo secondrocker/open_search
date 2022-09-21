@@ -1,7 +1,7 @@
 require 'open_search/version'
 require 'active_support'
 require 'aliyun/opensearch'
-
+require 'ostruct'
 module OpenSearch
   autoload :QueryCond, 'open_search/query_cond'
   autoload :CondCombine, 'open_search/cond_combine'
@@ -14,4 +14,6 @@ module OpenSearch
   autoload :SearchableFields, 'open_search/searchable_fields'
   autoload :Searcher, 'open_search/searcher'
   autoload :Sort, 'open_search/sort'
+  autoload :Facet, 'open_search/facet'
+  autoload :Result, 'open_search/result'
 end

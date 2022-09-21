@@ -11,9 +11,8 @@ module OpenSearch
     end
 
     class Equal < Base
-      def to_query
-        
-        format_value = value.is_a?(String) ?  %Q{"#{value}"} : value
+      def to_filter
+        format_value = value.is_a?(String) ? %("#{value}") : value
         if relation_and
           "#{field}= #{format_value}"
         else
@@ -25,15 +24,15 @@ module OpenSearch
     class Match < Base
       def to_query
         if relation_and
-          "#{field}: '#{value}'"
+          "#{field}: #{value}"
         else
-          "NOT #{field}: '#{value}'"
+          "NOT #{field}: #{value}"
         end
       end
     end
 
     class In < Base
-      def to_query
+      def to_filter
         if relation_and
           "in(#{field},\"#{value.join('|')}\")"
         else
@@ -45,6 +44,12 @@ module OpenSearch
     class Range
       attr_accessor :field, :params
 
+      RANGE_SYMS = {
+        gteq: '>=',
+        lteq: '<=',
+        gt: '>',
+        lt: '<'
+      }
       def initialize(field, params)
         self.field = field
         self.params = params
@@ -60,13 +65,20 @@ module OpenSearch
         elsif params[:gteq] && params[:lt]
           "#{field}: [#{params[:gteq]},#{params[:lt]}]"
         elsif params[:gteq]
-          "#{field} >= #{params[:gteq]}"
+          "#{field}: [#{params[:gteq]},)"
         elsif params[:gt]
-          "#{field} > #{params[:gteq]}"
+          "#{field}:  (#{params[:gteq]},)"
         elsif params[:lteq]
-          "#{field} <= #{params[:gteq]}"
+          "#{field}:  (,#{params[:gteq]}]"
         elsif params[:lt]
-          "#{field} < #{params[:lt]}"
+          "#{field} < (,#{params[:lt]})"
+        end
+      end
+
+      def to_filter
+        %i[gteq gt lteq lt].inject('') do |str, key|
+          str += "#{field} #{RANGE_SYMS[key]} #{params[key]}" if params[key]
+          str
         end
       end
     end

@@ -1,41 +1,58 @@
 module OpenSearch
   module QueryScope
     class Base
-      attr_accessor :conds, :scopes, :select_fields, :orders,:config
+      attr_accessor :filters, :scopes, :select_fields, :orders, :config, :queries, :top_scope, :facets, :pager
 
       include ::OpenSearch::CondCombine
       include ::OpenSearch::FetchFields
       include ::OpenSearch::Paginate
       def initialize
-        self.conds = []
+        self.filters = []
         self.scopes = []
         self.select_fields = []
         self.orders = []
-        self.config = ""
+        self.queries = []
+        self.facets = []
+        self.pager = {}
+        self.config = ''
+      end
+
+      def top_scope?
+        top_scope
       end
     end
 
     class AndScope < Base
-      attr_accessor :top_and
-
-      def initialize(top_and: false)
+      def initialize(top_scope: false)
         super()
-        self.top_and = top_and
+        self.top_scope = top_scope
       end
 
+      # def to_query
+      #   query_scopes, filter_scopes = scopes.partition{|s| s.}
+      #   query_conds = queries + scopes
+      #   filter_conds = conds
+      #   filter_conds += scopes
+      #   sentences = []
+      #   if self.top_scope?
+      #     sentences << "query=(#{match_conds.map(&:to_query).join(' AND ')})" unless match_conds.empty?
+      #     sentences << "filter=(#{filter_conds.map(&:to_query).join(' AND ')})" unless filter_conds.empty?
+      #     sentences << "config=#{config}"
+      #     sentences << "sort=#{order_phases}"
+      #     "#{sentences.join('&&')}"
+      #   else
+      #     "(#{filter_conds.map(&:to_query).join(' AND ')})"
+      #   end
+      # end
+
       def to_query
-        match_conds,filter_conds = conds.partition{|c| c.is_a?( QueryCond::Match)}
-        
-        sentences = []
-        if self.top_and
-          sentences << "query=(#{match_conds.map(&:to_query).join(' AND ')})" unless match_conds.empty?
-          sentences << "filter=(#{filter_conds.map(&:to_query).join(' AND ')})" unless filter_conds.empty?
-          sentences << "config=#{config}"
-          sentences << "sort=#{order_phases}"
-          "#{sentences.join('&&')}"
-        else
-          "(#{filter_conds.map(&:to_query).join(' AND ')})"
-        end
+        _queries = (queries + scopes).map(&:to_query).compact
+        "(#{_queries.join(' AND ')})" unless _queries.empty?
+      end
+
+      def to_filter
+        _filters = (filters + scopes).map(&:to_filter).compact
+        "(#{_filters.join(' AND ')})" unless _filters.empty?
       end
 
       def order_phases
@@ -44,9 +61,18 @@ module OpenSearch
       end
 
       def full_query
-        raise "not top query scope" unless top_and
+        raise 'not top query scope' unless top_scope?
+
+        sentences = []
+        sentences << "query=(#{to_query})"
+        if _filters = to_filter
+          sentences << "filter=#{_filters}"
+        end
+        sentences << "config=#{config}"
+        sentences << "sort=#{order_phases}"
+        sentences << "aggregate=#{facets.map(&:to_facet).join(';')}"
         {
-          query: to_query,
+          query: sentences.join('&&'),
           fetch_fields: to_select_fields
         }
       end
@@ -54,9 +80,13 @@ module OpenSearch
 
     class OrScope < Base
       def to_query
-        querys = conds.map(&:to_query)
-        querys += scopes.map(&:to_query)
-        "(#{querys.join(' OR ')})"
+        _queries = (queries + scopes).map(&:to_query).compact
+        "(#{_queries.join(' OR ')})" unless _queries.empty?
+      end
+
+      def to_filter
+        _filters = (filters + scopes).map(&:to_filter).compact
+        "(#{_filters.join(' OR ')})" unless _filters.empty?
       end
     end
   end

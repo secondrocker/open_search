@@ -2,9 +2,9 @@ require 'open_search'
 require 'ostruct'
 
 OpenSearch::Client.configure do
-  endpoint  'opensearch-cn-shenzhen.aliyuncs.com'
-  access_key_id  'aaa'
-  access_key_secret  'bbb'
+  endpoint 'opensearch-cn-shenzhen.aliyuncs.com'
+  access_key_id 'aaa'
+  access_key_secret 'bbb'
 end
 
 class Product < OpenStruct
@@ -33,9 +33,9 @@ class Price < OpenStruct
   end
 end
 
-prices = [1,2,3].map do |i|
+prices = [1, 2, 3].map do |i|
   Price.new(
-    id: i,product_id: 34,price_price: i*10,time: Time.now - 3600 * 24 * i
+    id: 34, product_id: 34, price_price: i * 10, time: Time.now - 3600 * 24 * i
   )
 end
 
@@ -45,19 +45,26 @@ end
 #   category_text: 'DNA检查 核酸检查 大型设备',
 #   model: 'DNA-005',
 #   price: 222222.22,
-#   publish_date: Time.now.to_s,
+#   publish_date: [1,2,3,4],
 #   history_dates: [1,2,3,4,5]
 # )
 # OpenSearch::Client.instance.update('products', product.osearch_data)
 
- aa= Product.o_search do |f|
-    f.keywords(:default, '大型')
-    f.with(:price_price, gteq: 20)
-    f.with(:price, gteq: 12)
-    f.with(:history_dates, 2)
-    f.order_by(:id,'desc')
-    f.order_by(:price,'desc')
-    f.select(:id,:model,:product_name)
-    f.paginate(page: 1,per_page: 2)
+aa = Product.o_search do |f|
+  f.keywords(:default, '大型')
+  f.query(:publish_date, (0..1))
+  f.any_of do 
+    with :price, gteq: 2
+    without :class_name, 'Xxxxxx'
   end
-pp aa
+  f.order_by(:id, 'desc')
+  order_by(:price, 'desc')
+  # f.order_by_function('normalize', 'price', 10, 5,'desc')
+  f.select(:id)
+  f.paginate(page: 1, per_page: 1)
+  f.facet(:class_name)
+  f.facet(:product_id)
+end
+pp aa.facet(:class_name)
+pp aa.total
+pp aa.results
