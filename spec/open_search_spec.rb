@@ -22,6 +22,17 @@ RSpec.describe OpenSearch do
     end
   end
 
+  context 'range' do
+    let(:f) { OpenSearch::QueryScope::AndScope.new }
+    it 'range scope' do
+      f.any_of do |ff|
+        ff.with(:a, gteq: 2, lteq: 4)
+        ff.with(:b, lt: 4)
+      end
+      expect(f.to_filter).to include('(a >= 2 AND a <= 4) OR b < 4')
+    end
+  end
+
   context 'or query scope' do
     let(:f) { OpenSearch::QueryScope::AndScope.new }
     it 'with conds' do

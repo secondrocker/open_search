@@ -76,10 +76,12 @@ module OpenSearch
       end
 
       def to_filter
-        %i[gteq gt lteq lt].inject([]) do |ss, key|
+        ff = %i[gteq gt lteq lt].inject([]) do |ss, key|
           ss << "#{field} #{RANGE_SYMS[key]} #{params[key]}" if params[key]
           ss
-        end.join(' AND ')
+        end
+        return ff if ff.size == 1
+        "(#{ff.join(' AND ')})"
       end
     end
   end
