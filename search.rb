@@ -52,7 +52,10 @@ end
 
 aa = Product.o_search do |f|
   f.keywords(:default, '大型')
-  f.query(:publish_date, (0..1))
+  f.any_of do |ff|
+    ff.query(:publish_date, (0..1))
+    ff.query(:publish_date, (3..5))
+  end
   f.any_of do 
     with :price, gteq: 2
     without :class_name, 'Xxxxxx'
