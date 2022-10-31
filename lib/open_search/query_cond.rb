@@ -1,9 +1,10 @@
 module OpenSearch
   module QueryCond
     class Base
-      attr_accessor :field, :value, :relation_and
+      attr_accessor :field, :value, :relation_and, :fields
 
-      def initialize(field, value, relation_and: true)
+      def initialize(field, value, relation_and: true, fields: [])
+        self.fields = fields
         self.field = field
         self.value = value
         self.relation_and = relation_and
@@ -76,11 +77,33 @@ module OpenSearch
       end
 
       def to_filter
-        ff = %i[gteq gt lteq lt].inject([]) do |ss, key|
+        o_field = params[:fields][field]
+        return normal_filter unless o_field[:multiple]
+        raise 'multiple support int/float/time only!' unless %w[int float time].include?(o_field[:field_type])
+
+        if o_field[:field_type] == 'float'
+          min = ((params[:gteq] || params[:gt] || -42_949_672) * 100).to_i # 32 位能表达最小的负数/100
+          max = ((params[:lteq] || params[:lt] || 85_899_345) * 100).to_i # 32 位能表达最大的数/100
+        elsif o_field[:field_type] == 'time'
+          min = (params[:gteq] || params[:gt] || 0).to_i # 1970年 秒数
+          max = (params[:lteq] || params[:lt] || 8_589_934_592).to_i # 2242年秒数
+        else
+          min = (params[:gteq] || params[:gt] || -4_294_967_296).to_i
+          max = (params[:lteq] || params[:lt] || 8_589_934_592).to_i
+        end
+        min += 1 if params[:gt]
+        max -= 1 if params[:lt]
+        <<-STR
+          bit_struct(#{field},"0-31,32-63", "overlap,$1,$2,#{min},#{max}") != -1
+        STR
+      end
+
+      def normal_filter
+        ff = %i[gteq gt lteq lt].each_with_object([]) do |key, ss|
           ss << "#{field} #{RANGE_SYMS[key]} #{params[key]}" if params[key]
-          ss
         end
         return ff if ff.size == 1
+
         "(#{ff.join(' AND ')})"
       end
     end

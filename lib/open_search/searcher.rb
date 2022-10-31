@@ -4,7 +4,7 @@ module OpenSearch
 
     class_methods do
       def o_search(&block)
-        query_scope = QueryScope::AndScope.new(top_scope: true)
+        query_scope = QueryScope::AndScope.new(top_scope: true, search_class: self)
         query_scope.with('class_name', name)
         query_scope.instance_exec(query_scope, &block)
         ::OpenSearch::Result.new(query_scope)

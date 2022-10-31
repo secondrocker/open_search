@@ -1,12 +1,15 @@
 module OpenSearch
   module QueryScope
     class Base
-      attr_accessor :filters, :scopes, :select_fields, :orders, :config, :queries, :top_scope, :facets, :pager
+      attr_accessor :filters, :scopes, :select_fields, :orders, :config, :queries, :top_scope, :facets, :pager,
+                    :search_class
 
       include ::OpenSearch::CondCombine
       include ::OpenSearch::FetchFields
       include ::OpenSearch::Paginate
-      def initialize
+      def initialize(top_scope: false, search_class: nil, super_scope: nil)
+        self.search_class = search_class || super_scope&.search_class
+        self.top_scope = top_scope
         self.filters = []
         self.scopes = []
         self.select_fields = []
@@ -23,11 +26,6 @@ module OpenSearch
     end
 
     class AndScope < Base
-      def initialize(top_scope: false)
-        super()
-        self.top_scope = top_scope
-      end
-
       # def to_query
       #   query_scopes, filter_scopes = scopes.partition{|s| s.}
       #   query_conds = queries + scopes
