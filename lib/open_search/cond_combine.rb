@@ -63,5 +63,10 @@ module OpenSearch
     def facet(key, options: {})
       facets << Facet.new(key, options)
     end
+
+    def group(dist_key, &block)
+      self.distinct = Distinct.new(dist_key)
+      se.fldistinct.instance_exec(&block)
+    end
   end
 end

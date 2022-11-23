@@ -1,7 +1,8 @@
 module OpenSearch
   class SearchableFields
     attr_accessor :fields
-
+    attr_accessor :instance
+    attr_accessor :primary_key
     def initialize
       @fields = {}
     end

@@ -1,15 +1,15 @@
 module OpenSearch
   class Facet
-    attr_accessor :key, :options
+    attr_accessor :group_key, :options
 
-    def initialize(key, options = {})
+    def initialize(group_key, options = {})
       options[:agg_fun] ||= 'count()'
-      self.key = key
+      self.group_key = group_key
       self.options = options
     end
 
-    def to_facet
-      "group_key:#{key},agg_fun:#{options[:agg_fun]}"
+    def to_query
+      options.merge(group_key: group_key)
     end
   end
 end

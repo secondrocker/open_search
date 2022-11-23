@@ -4,16 +4,53 @@ module OpenSearch
 
     class_methods do
       attr_accessor :o_fields
+      attr_accessor :o_instance
+      attr_accessor :o_primary_key
+      attr_accessor :o_table_name
 
       def o_searchable(&block)
         search_fields = SearchableFields.new
         search_fields.instance_exec(search_fields, &block)
         self.o_fields = search_fields.fields
+        self.o_instance = search_fields.instance
+        self.o_primary_key = search_fields.primary_key || 'id' # 默认主键为id
+        self.o_table_name = search_fields.table_name || self.class
+        raise "must set instance" if self.o_instance.blank?
+      end
+
+      def remove_index(ids)
+        records = ids.map do |id|
+          {
+            cmd: 'delete',
+            fields: {
+              self.o_primary_key => id
+            }
+          }
+        end
+        ::OpenSearch::Client.remove_index(self.o_instance, self.o_table_name.pluralize,records)
+      end
+
+      def push_index(records)
+        records.each_slice(100) do |_records|
+          rr = self.o_search do 
+            with(self.o_primary_key,_records.map{|x| x.send(self.o_primary_key)})
+            select(self.o_primary_key)
+          end
+          primary_ids = rr['items']['fields'].map{|r| r['items'][self.o_primary_key]}
+          items = _records.map do |r|
+            {
+              cmd: primary_ids.include?(r.send(self.o_primary_key)) ? 'update',
+              fields: r.osearch_data
+            }
+          end
+          ::OpenSearch::Client.push_index(self.o_instance, self.o_table_name.pluralize, items)
+        end
+        
       end
     end
 
     def osearch_data
-      self.class.o_fields.inject({ class_name: self.class.name }) do |hash, kv|
+      self.class.o_fields.inject({}) do |hash, kv|
         field_name, info = kv
         hash.merge field_name => instance_exec(&info[:block])
       end

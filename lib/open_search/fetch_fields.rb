@@ -5,7 +5,7 @@ module OpenSearch
     end
 
     def to_select_fields
-      self.select_fields.join(';')
+      self.select_fields
     end
   end
 end

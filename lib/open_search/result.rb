@@ -10,7 +10,7 @@ module OpenSearch
       raise 'not top level scope' unless search_scope.top_scope?
 
       pp search_scope.full_query unless @results
-      @results ||= Client.instance.search(**search_scope.full_query)
+      @results ||= Client.request('/search/common',**search_scope.full_query)
     end
 
     def raw_results

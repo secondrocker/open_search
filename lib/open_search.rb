@@ -1,6 +1,6 @@
 require 'open_search/version'
 require 'active_support'
-require 'aliyun/opensearch'
+require 'faraday'
 require 'ostruct'
 module OpenSearch
   autoload :QueryCond, 'open_search/query_cond'
@@ -8,12 +8,13 @@ module OpenSearch
   autoload :FetchFields, 'open_search/fetch_fields'
   autoload :Paginate, 'open_search/paginate'
   autoload :QueryScope, 'open_search/query_scope'
-
+  
   autoload :Client, 'open_search/client'
   autoload :Searchable, 'open_search/searchable'
   autoload :SearchableFields, 'open_search/searchable_fields'
   autoload :Searcher, 'open_search/searcher'
   autoload :Sort, 'open_search/sort'
   autoload :Facet, 'open_search/facet'
+  autoload :Distinct, 'open_search/distinct'
   autoload :Result, 'open_search/result'
 end

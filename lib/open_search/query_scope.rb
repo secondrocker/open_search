@@ -2,7 +2,7 @@ module OpenSearch
   module QueryScope
     class Base
       attr_accessor :filters, :scopes, :select_fields, :orders, :config, :queries, :top_scope, :facets, :pager,
-                    :search_class
+                    :search_class, :distinct
 
       include ::OpenSearch::CondCombine
       include ::OpenSearch::FetchFields
@@ -61,17 +61,15 @@ module OpenSearch
       def full_query
         raise 'not top query scope' unless top_scope?
 
-        sentences = []
-        sentences << "query=(#{to_query})"
-        if _filters = to_filter
-          sentences << "filter=#{_filters}"
-        end
-        sentences << "config=#{config}"
-        sentences << "sort=#{order_phases}"
-        sentences << "aggregate=#{facets.map(&:to_facet).join(';')}"
         {
-          query: sentences.join('&&'),
-          fetch_fields: to_select_fields
+          instance: search_class.o_instance,
+          queries: to_query,
+          filters: to_filter
+          config: config
+          fetch_fields: to_select_fields,
+          sorts: order_phases,
+          aggragate: facets.map(&:to_query),
+          **(self.distinct ? { distinct: self.distinct.to_query} : {})
         }
       end
     end
