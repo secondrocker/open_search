@@ -11,7 +11,7 @@ module OpenSearch
       end
 
       def to_query
-        "#{sorting == 'asc' ? '+' : '-'}#{field}"
+        "#{sorting.to_s == 'asc' ? '+' : '-'}#{field}"
       end
     end
 

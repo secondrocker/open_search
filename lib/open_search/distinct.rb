@@ -1,14 +1,15 @@
 module OpenSearch
   class Distinct
-    attr_accessor :dist_key, :options
+    attr_accessor :dist_key, :options, :orders
 
     def initialize(dist_key)
-      self.options = { dist_times: 1, dist_count: 3}
-      self.group_key = group_key
+      self.options = { dist_times: 1, dist_count: 1}
+      self.dist_key = dist_key
     end
     # 无用
-    def order_by
-
+    def order_by(field, sorting = :asc)
+      orders ||= []
+      orders << "#{sorting.to_s == 'asc' ? '+' : '-'}#{field}"
     end
 
     def limit(num)
@@ -16,7 +17,7 @@ module OpenSearch
     end
 
     def to_query
-      options.merge(group_key: group_key)
+      options.merge(dist_key: dist_key, orders: orders && orders.join(';'))
     end
   end
 end

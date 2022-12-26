@@ -1,6 +1,6 @@
 module OpenSearch
   module FetchFields
-    def select(*args)
+    def field_select(*args)
       self.select_fields += args
     end
 

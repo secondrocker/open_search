@@ -2,7 +2,7 @@ module OpenSearch
   module QueryScope
     class Base
       attr_accessor :filters, :scopes, :select_fields, :orders, :config, :queries, :top_scope, :facets, :pager,
-                    :search_class, :distinct
+                    :search_class, :distinct, :custom_path, :start_time, :end_time, :contain_tax
 
       include ::OpenSearch::CondCombine
       include ::OpenSearch::FetchFields
@@ -17,7 +17,7 @@ module OpenSearch
         self.queries = []
         self.facets = []
         self.pager = {}
-        self.config = ''
+        self.config = nil
       end
 
       def top_scope?
@@ -58,19 +58,33 @@ module OpenSearch
         orders.map(&:to_query).join(';')
       end
 
+      def set_times(*times)
+        _start_time,_end_time = times
+        if _start_time
+          self.start_time = _start_time.strftime("%Y-%m-%d %H:%M:%S")
+        end
+        if _end_time
+          self.end_time = _end_time.end_of_day.strftime("%Y-%m-%d %H:%M:%S")
+        end
+      end
+
       def full_query
         raise 'not top query scope' unless top_scope?
-
         {
           instance: search_class.o_instance,
           queries: to_query,
-          filters: to_filter
-          config: config
+          filters: to_filter,
+          config: config&.options,
           fetch_fields: to_select_fields,
           sorts: order_phases,
-          aggragate: facets.map(&:to_query),
+          aggregates: facets.map(&:to_query),
           **(self.distinct ? { distinct: self.distinct.to_query} : {})
         }
+      end
+
+      def service_path
+        return '/search/common' if self.custom_path.nil?
+        "/search/#{self.custom_path}"
       end
     end
 

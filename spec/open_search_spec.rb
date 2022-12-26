@@ -2,6 +2,8 @@ class TestModel < OpenStruct
   include OpenSearch::Searchable
 
   o_searchable do
+    set_instance :test
+    
     integer :a
     float :b
     text :x
@@ -55,7 +57,7 @@ RSpec.describe OpenSearch do
         ff.with(:b, (1..3))
       end
       expect(f.to_filter).to include('(b >= 1 AND b <= 3)')
-      expect(f.to_query).to include('x: x')
+      expect(f.to_query).to include("x: 'x'")
     end
   end
 
@@ -64,12 +66,12 @@ RSpec.describe OpenSearch do
       data = m.osearch_data
       a1 = m.tt.first.to_i
       a2 = m.tt.last.to_i
-      expect(data[:tt]).to eq([(a1 << 32) | a2])
+      expect(data[:tt_arr_]).to eq([(a1 << 32) | a2])
       m.ff.sort!
       f1 = m.ff[0] * 3 * 100
       f2 = m.ff[1] * 3 * 100
       f3 = m.ff[2] * 3 * 100
-      expect(data[:ff]).to eq([(f1 << 32) | f2, (f2 << 32 | f3)])
+      expect(data[:ff_arr_]).to eq([(f1 << 32) | f2, (f2 << 32 | f3)])
     end
     let(:f) { OpenSearch::QueryScope::AndScope.new(search_class: TestModel) }
     it 'search bit_struct' do

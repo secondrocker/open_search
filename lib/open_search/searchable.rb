@@ -14,8 +14,8 @@ module OpenSearch
         self.o_fields = search_fields.fields
         self.o_instance = search_fields.instance
         self.o_primary_key = search_fields.primary_key || 'id' # 默认主键为id
-        self.o_table_name = search_fields.table_name || self.class
-        raise "must set instance" if self.o_instance.blank?
+        self.o_table_name = search_fields.table_name || self.name.tableize
+        raise "must set instance" if self.o_instance.nil?
       end
 
       def remove_index(ids)
@@ -27,23 +27,28 @@ module OpenSearch
             }
           }
         end
-        ::OpenSearch::Client.remove_index(self.o_instance, self.o_table_name.pluralize,records)
+        ::OpenSearch::Client.remove_index(self.o_instance, self.o_table_name,records)
       end
 
       def push_index(records)
+        # primary_key = self.o_primary_key.to_s
         records.each_slice(100) do |_records|
-          rr = self.o_search do 
-            with(self.o_primary_key,_records.map{|x| x.send(self.o_primary_key)})
-            select(self.o_primary_key)
-          end
-          primary_ids = rr['items']['fields'].map{|r| r['items'][self.o_primary_key]}
+          # rr = self.o_search do 
+          #   any_of do
+          #     _records.each do |r|
+          #       keywords(primary_key, r.send(primary_key))
+          #     end
+          #   end
+          #   select(primary_key)
+          # end.results
+          # primary_ids = rr.fetch('items', []).map{|r| r[primary_key]}
           items = _records.map do |r|
             {
-              cmd: primary_ids.include?(r.send(self.o_primary_key)) ? 'update',
+              cmd: 'add',
               fields: r.osearch_data
             }
           end
-          ::OpenSearch::Client.push_index(self.o_instance, self.o_table_name.pluralize, items)
+          ::OpenSearch::Client.push_index(self.o_instance, self.o_table_name, items)
         end
         
       end
@@ -63,6 +68,8 @@ module OpenSearch
 
       _block = (block || -> { send(field_name) })
       vals = instance_exec(&_block)
+      return if vals.nil?
+
       if field_type == 'float'
         vals = _float_pre_ranges(vals)
       elsif field_type == 'time'

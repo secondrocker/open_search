@@ -1,5 +1,4 @@
-require 'open_search'
-require 'ostruct'
+require_relative './lib/open_search.rb'
 
 OpenSearch::Client.service_url = 'http://localhost:2222'
 
@@ -8,6 +7,8 @@ class Product < OpenStruct
   include OpenSearch::Searcher
 
   o_searchable do
+    set_instance 'icc_search_start'
+
     integer :id
     text :product_name
     text :model
@@ -46,8 +47,7 @@ product = Product.new(
   publish_date: [1, 2, 3, 4],
   history_dates: nums
 )
-OpenSearch::Client.instance.insert('products', product.osearch_data)
-
+# Product.push_index([product])
 aa = Product.o_search do |f|
   f.keywords(:default, '大型')
   # f.any_of do |ff|
@@ -59,13 +59,64 @@ aa = Product.o_search do |f|
   #   without :class_name, 'Xxxxxx'
   # end
   f.order_by(:id, 'desc')
-  order_by(:price, 'desc')
+  f.order_by(:price, 'desc')
   # f.order_by_function('normalize', 'price', 10, 5,'desc')
-  f.select(:id)
-  f.paginate(page: 1, per_page: 1)
-  f.facet(:class_name)
-  f.facet(:product_id)
+  f.field_select(:id,:product_name, :price)
+  f.paginate(page: 1, per_page: 2)
+  f.facet(:id)
+  f.group(:id) do
+
+  end
+  # f.facet(:product_id)
 end
-pp aa.facet(:class_name)
-pp aa.total
-pp aa.results
+# pp aa.facet(:class_name)
+# pp aa.total
+# pp aa.results
+aa.results
+
+
+aa = FirmProduct.o_search do |f|
+  set_custom_path('common')
+  keywords(:firm_id,15686)
+
+end
+word ="水泥"
+OpenSearch::Client.service_url = 'http://localhost:19945'
+aa = FirmProduct.o_search do |f|
+  f.set_custom_path('product')
+  f.keywords(:default,word)
+  f.group(:firm_id)
+  f.facet(:category_id)
+  f.facet(:product_type)
+  f.facet(:brand_id)
+  f.facet(:firm_id)
+  f.field_select(:firm_id,:id,:category_id,:brand_id)
+  f.paginate(page: 1, per_page: 10)
+end
+
+
+aa = FirmProduct.o_search do
+  set_custom_path('product')
+  keywords(:default,word)
+  group(:firm_id)
+  facet(:category_id)
+  facet(:product_type)
+  facet(:brand_id)
+  facet(:firm_id)
+  field_select(:firm_id,:id,:category_id,:brand_id)
+  paginate(page: 1, per_page: 10)
+end
+
+
+FirmProduct.includes([:product=>[:new_price,:product_category,:last_price,:information_price,:brand,:batch_product_picture,:last_market_price,:last_project_price,:product_parameters],:firm=>[:alias_firms]]).find_in_batches(:batch_size => 100, start: 664841) do |ff|
+  FirmProduct.push_index(ff)
+end
+
+Ora::ProductCategory.find_in_batches(batch_size: 100) do |cc|
+  Ora::ProductCategory.push_index(cc)
+end
+
+Ora::Brand.find_in_batches(batch_size: 100) do |cc|
+  Ora::Brand.push_index(cc)
+end
+

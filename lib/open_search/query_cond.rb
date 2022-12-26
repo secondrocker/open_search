@@ -5,7 +5,7 @@ module OpenSearch
 
       def initialize(field, value, relation_and: true, fields: [])
         self.fields = fields
-        self.field = field
+        self.field = field.to_sym
         self.value = value
         self.relation_and = relation_and
       end
@@ -14,6 +14,7 @@ module OpenSearch
     class Equal < Base
       def to_filter
         format_value = value.is_a?(String) ? %("#{value}") : value
+        format_value = value.to_i if self.fields[field][:field_type] == 'time'
         if relation_and
           "#{field}= #{format_value}"
         else
@@ -25,19 +26,21 @@ module OpenSearch
     class Match < Base
       def to_query
         if relation_and
-          "#{field}: #{value}"
+          "#{field}: '#{value}'"
         else
-          "NOT #{field}: #{value}"
+          "NOT #{field}: '#{value}'"
         end
       end
     end
 
     class In < Base
       def to_filter
-        if relation_and
-          "in(#{field},\"#{value.join('|')}\")"
+        if self.fields[field][:multiple]
+          value = self.value.map(&to_i) if self.fields[field][:field_type] == 'time'
+          vv = value.map{|v| "#{field}#{relation_and ? '=' : '!='}#{v}"}.join(" AND ")
+          "(#{vv})"
         else
-          "notin(#{field},\"#{value.join('|')}\")"
+          "#{relation_and ? 'in' : 'notin'}(#{field},\"#{self.value.join('|')}\")"
         end
       end
     end
@@ -93,8 +96,9 @@ module OpenSearch
         end
         min += 1 if params[:gt]
         max -= 1 if params[:lt]
+        _field = "#{self.field}_arr_" # 数组 范围查询字段
         <<-STR
-          bit_struct(#{field},"0-31,32-63", "overlap,$1,$2,#{min},#{max}") != -1
+          bit_struct(#{_field},"0-31,32-63", "overlap,$1,$2,#{min},#{max}") != -1
         STR
       end
 
