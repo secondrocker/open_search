@@ -1,43 +1,87 @@
 # OpenSearch
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/open_search`. To experiment with that code, run `bin/console` for an interactive prompt.
+本gem为search service 服务提供查询dsl，使用类似sunspot的语法
 
-TODO: Delete this and the text above, and describe your gem
+# 使用方法
 
-## Installation
-
-Add this line to your application's Gemfile:
+- 配置服务地址
 
 ```ruby
-gem 'open_search'
+OpenSearch::Client.service_url = 'http://localhost:2222'
 ```
 
-And then execute:
+### 指定索引字段
+- set_instance 指定实例名称
+- set_table_name 指定表名（默认为class name复数形式）
+- 有 integer（整型）,float（浮点型），time(时间类型)，text(全文索引)
+- 与sunspot一样，可跟 方法名的symbol，可跟 block
+- 数组类型增加 multiple: true
 
-    $ bundle
+```ruby
+class Product < OpenStruct
+  include OpenSearch::Searchable
+  include OpenSearch::Searcher
 
-Or install it yourself as:
+  o_searchable do
+    set_instance 'icc_search_start' # open search 实例名称
+    set_table_name 'products'
+    integer :id 
+    text :product_name
+    text :model
+    float :price
+    time :publish_date
+    integer :history_dates
+    integer (:price_unit_ids), multiple: true do
+      product.published_price_unit_ids if product.product_type != 2
+    end
+  end
+end
 
-    $ gem install open_search
+```
 
-## Usage
+### 搜索
+- 语法与 sunspot类似, keywords 需指定索引名(:default，可以为示例的:product_name)
+- 可使用any_of,all_of实现 嵌套查询
+- with 查询 可以跟 值,array, range，以及 gteq ,lteq,gt,lt 为key的hash
+- without 与with使用相似，意思相反
+- order_by 实现排序，可多个
+- field_select 为 返回 查询的字段，无此则按照 open search 设置的默认返回字段
+- paginate 分页,指定页码，每页个数即可
+- facet 实现分片统计,默认为count结果, agg_fun 可以指定 count(id)、sum(id)、max(id)、min(id)、distinct_count五种系统函数
+- group  实现分组抽取功能，可不带block，也可带block指定order_by， limit
 
-TODO: Write usage instructions here
+```ruby
+aa = Product.o_search do |f|
+  f.keywords(:default, '大型')
+  f.any_of do |ff|
+    ff.query(:publish_date, (0..1))
+    ff.query(:publish_date, (3..5))
+  end
+  f.any_of do
+    with :price, gteq: 2
+    without :class_name, 'Xxxxxx'
+  end
+  f.order_by(:id, 'desc')
+  f.order_by(:price, 'desc')
+  # f.order_by_function('normalize', 'price', 10, 5,'desc')
+  f.field_select(:id,:product_name, :price)
+  f.paginate(page: 1, per_page: 2)
+  f.facet(:id)
+  f.group(:id) do
+    order_by :id,:desc
+    order_by :market_price, :asc
+    limit  10
+  end
+  # f.facet(:product_id)
+end
 
-## Development
+```
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+### 结果
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+aa.results
+aa.
+aa.facet(:firm_id)  返回 指定分组的统计结果，结果格式与sunspot一样
+aa.total 返回 结果数量
 
-## Contributing
-
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/open_search. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
-
-## License
-
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
-
-## Code of Conduct
-
-Everyone interacting in the OpenSearch project’s codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/[USERNAME]/open_search/blob/master/CODE_OF_CONDUCT.md).
+aa.custom_results  返回 产品/公司/品牌 等 对应的 专门格式
